@@ -1,9 +1,9 @@
 # Base image
-FROM ubuntu:latest
+FROM alpine/terragrunt:0.13.4
 # Update Ubuntu and install required packages
-RUN set -ex \ 
-    && apt-get -y update \
-    && apt-get -y install apt-utils curl git unzip vim
+RUN set -ex \
+    && apk update \
+    && apk add curl git unzip vim make alpine-sdk musl-dev go python3 py3-pip
 
 # Set Maintainer
 LABEL maintainer = "Juan.Pinzon@ibm.com"
@@ -11,13 +11,13 @@ LABEL maintainer = "Juan.Pinzon@ibm.com"
 # Set the working directory to /temp
 WORKDIR /temp
 
-# Set ENV variables 
+# Set ENV variables
 ENV HOME /root
 
 ###########################################################
 RUN echo "[Step 1-1]: Install go and Create Workspace"
 ###########################################################
-ENV GO_VERSION 1.14.7
+ENV GO_VERSION 1.13.15
 ENV GO_TAR go$GO_VERSION.linux-amd64.tar.gz
 ENV GO_URL https://golang.org/dl/$GO_TAR  
 RUN set -ex \ 
@@ -90,7 +90,7 @@ RUN set -ex \
 # On a Dockerfile git clone everything on WORKDIR
 RUN mv * $GOPATH/src/golang.org/x/
 
-# below packages are required after change above packages source
+# below packages are required after hge above packages source
 RUN set -ex \
     && go get github.com/agext/levenshtein \
     && go get github.com/mitchellh/go-wordwrap \
@@ -104,16 +104,6 @@ RUN set -ex \
 RUN set -ex \
     && cd $GOPATH/src \
     && go get -u cloud.google.com/go/compute/metadata
-
-###########################################################
-RUN echo "[Step 6]: Setup Ansible"
-###########################################################
-ENV DEBIAN_FRONTEND=noninteractive
-RUN apt-get -y install ansible
-
-# Fix "winrm or requests is not installed: No module named winrm"
-RUN apt -y install python3-pip
-RUN pip3 install --ignore-installed "pywinrm>=0.2.2"
 
 ###########################################################
 RUN echo "[Step 7]: Access IBM Cloud Packer plugin"
@@ -139,7 +129,7 @@ RUN set -ex \
 RUN set -ex \
     && cd $GOPATH/src/github.com/ibmcloud/packer-builder-ibmcloud \
     && go generate ./builder/ibmcloud/... \
-    && CGO_ENABLED=0 go build
+    && CGO_ENABLED=0 GOOS="linux" go build
 
 ###########################################################
 RUN echo "IBM Packer Plugin created successfully!!!"
